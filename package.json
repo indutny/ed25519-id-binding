@@ -1,6 +1,6 @@
 {
   "name": "ed25519-id-binding",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Low level bindings for ed25519-id",
   "main": "index.js",
   "dependencies": {
