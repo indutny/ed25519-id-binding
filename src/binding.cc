@@ -14,6 +14,8 @@ namespace ed25519id {
 
 const unsigned int kAlphaLen = 26;
 
+static char pool[10485760];
+
 NAN_METHOD(Generate) {
   const char* name = Buffer::Data(info[0]);
   size_t len = Buffer::Length(info[0]);
@@ -30,9 +32,14 @@ NAN_METHOD(Generate) {
   BIGNUM num;
   BN_init(&num);
 
+  if (iterations + sizeof(sk) > sizeof(pool))
+    abort();
+
+  randombytes_buf(pool, iterations + sizeof(sk));
+
   int i;
   for (i = 0; i < iterations; i++) {
-    randombytes_buf(sk, sizeof(sk));
+    memcpy(sk, &pool[i], sizeof(sk));
     ed25519_publickey(sk, pk);
 
     BN_bin2bn(pk, sizeof(pk), &num);
