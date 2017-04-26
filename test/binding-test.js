@@ -1,23 +1,23 @@
 'use strict';
 
 const assert = require('assert');
-const id = require('ed25519-id');
+const huffin = require('huffin');
 const Buffer = require('buffer').Buffer;
 
 const binding = require('../');
 
 describe('ed25519-id-binding', () => {
   it('should generate', () => {
-    const prefix = Buffer.from('ok');
+    const prefix = huffin.parsePrefix('wut');
     let pair = null;
     for (;;) {
-      const res = binding.generate(prefix, 10000);
+      const res = binding.generate(prefix.value.toBuffer(), prefix.bitLength, 10000);
       if (res !== false) {
         pair = { secretKey: res, publicKey: res.slice(32) };
         break;
       }
     }
 
-    assert(/@ok\//.test(id.stringify(pair.publicKey)));
+    assert(/@ok\//.test(huffin.stringify(pair.publicKey)));
   });
 });

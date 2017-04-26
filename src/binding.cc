@@ -1,55 +1,42 @@
 #include <nan.h>
-
-#include "sodium.h"
+#include <nan.h>
 #include "ed25519.h"
+
 #include "openssl/bn.h"
+#include "openssl/conf.h"
+#include "openssl/rand.h"
 
 using namespace node;
 using namespace v8;
 
-// As per Libsodium install docs
-#define SODIUM_STATIC
-
 namespace ed25519id {
 
-const unsigned int kAlphaLen = 26;
-
-static char pool[10485760];
-
 NAN_METHOD(Generate) {
-  const char* name = Buffer::Data(info[0]);
-  size_t len = Buffer::Length(info[0]);
-  int iterations = info[1]->IntegerValue();
-  uint8_t codes[len + 1];
-
-  for (size_t i = 0; i < len; i++)
-    codes[i] = name[i] - 'a' + 1;
-  codes[len] = 0;
+  const char* prefix_data = Buffer::Data(info[0]);
+  size_t prefix_len = Buffer::Length(info[0]);
+  int prefix_bits = info[1]->IntegerValue();
+  int iterations = info[2]->IntegerValue();
 
   ed25519_secret_key sk;
   ed25519_public_key pk;
 
   BIGNUM num;
+  BIGNUM prefix;
+
   BN_init(&num);
-
-  if (iterations + sizeof(sk) > sizeof(pool))
-    abort();
-
-  randombytes_buf(pool, iterations + sizeof(sk));
+  BN_init(&prefix);
+  BN_bin2bn(reinterpret_cast<const unsigned char*>(prefix_data), prefix_len,
+            &prefix);
 
   int i;
   for (i = 0; i < iterations; i++) {
-    memcpy(sk, &pool[i], sizeof(sk));
+    RAND_bytes(sk, sizeof(sk));
     ed25519_publickey(sk, pk);
 
     BN_bin2bn(pk, sizeof(pk), &num);
+    BN_mask_bits(&num, prefix_bits);
 
-    size_t j;
-    for (j = 0; j < len + 1; j++)
-      if (codes[j] != BN_div_word(&num, kAlphaLen + 1))
-        break;
-
-    if (j == len + 1)
+    if (BN_ucmp(&num, &prefix) == 0)
       break;
   }
 
@@ -66,9 +53,16 @@ NAN_METHOD(Generate) {
 }
 
 NAN_MODULE_INIT(Init) {
-  if (sodium_init() == -1) {
-    Nan::ThrowError("sodium_init() failed");
-    return;
+  OPENSSL_no_config();
+
+  for (;;) {
+    int status = RAND_status();
+    if (status == 1)
+      break;
+
+    // Give up, RAND_poll() not supported.
+    if (RAND_poll() == 0)
+      break;
   }
 
   Nan::SetMethod(target, "generate", Generate);

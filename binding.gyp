@@ -5,7 +5,6 @@
       'include_dirs' : [
         "<!(node -e \"require('nan')\")",
         "<(nodedir)/deps/openssl/openssl/include",
-        'deps/libsodium/src/libsodium/include',
         'deps/ed25519-donna',
       ],
       'defines': [
@@ -24,16 +23,6 @@
       'cflags': [
         '-g',
         '-O3',
-      ],
-      'libraries': [
-        '<!(node preinstall.js --print-lib)'
-      ],
-      'conditions': [
-        ['OS=="linux"', {
-          'link_settings': {
-            'libraries': [ "-Wl,-rpath=\\$$ORIGIN/"]
-          }
-        }],
       ],
     }
   ]
